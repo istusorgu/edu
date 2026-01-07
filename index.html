@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISTU - Belge Doğrulama Sistemi | Document Verification System</title>
+    <style>
+        body { background-color: #ffffff; color: #333; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        .top-bar { width: 100%; background: #f8f9fa; padding: 10px 0; border-bottom: 1px solid #dee2e6; text-align: right; }
+        .top-bar select { background: white; color: #333; border: 1px solid #ccc; margin-right: 20px; padding: 5px; font-size: 13px; border-radius: 4px; cursor: pointer; }
+        .container { margin-top: 40px; width: 95%; max-width: 900px; text-align: center; }
+        .title { font-size: 16px; color: #003366; margin-bottom: 25px; border-bottom: 2px solid #003366; padding-bottom: 10px; font-weight: bold; text-transform: uppercase; }
+        .form-table { width: 100%; max-width: 550px; margin: 0 auto; border-collapse: collapse; background: #fefefe; border-radius: 8px; }
+        .form-table td { padding: 10px; vertical-align: middle; }
+        .label { text-align: right; font-size: 14px; color: #555; font-weight: bold; width: 45%; }
+        input[type="text"] { background: #fff; border: 1px solid #ccc; color: #333; padding: 10px; width: 100%; max-width: 300px; font-size: 14px; border-radius: 4px; outline: none; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); }
+        .captcha-img { background: #e9ecef; color: #333; padding: 10px; font-weight: bold; font-size: 22px; letter-spacing: 5px; border-radius: 4px; border: 1px solid #ccc; user-select: none; cursor: pointer; display: inline-block; font-style: italic; }
+        .btn-query { background: #003366; color: #fff; border: none; padding: 10px 30px; font-weight: bold; cursor: pointer; border-radius: 4px; font-size: 14px; transition: background 0.3s; }
+        #resultView { display: none; width: 100%; margin-top: 30px; animation: fadeIn 0.5s ease; }
+        .data-table { width: 100%; border-collapse: collapse; background: #fff; font-size: 13px; margin-bottom: 30px; }
+        .data-table th { background: #003366; color: #fff; text-align: left; padding: 12px; border: 1px solid #dee2e6; }
+        .data-table td { padding: 12px; border: 1px solid #dee2e6; text-align: left; color: #444; }
+        .download-btn { background: #28a745; color: white; border: none; padding: 8px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 12px; text-decoration: none; display: inline-block; }
+        .official-card { background: #ffffff; color: #333; padding: 30px; border-radius: 10px; margin-top: 20px; text-align: left; border: 1px solid #dee2e6; border-top: 10px solid #003366; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .uni-header { text-align: center; border-bottom: 1px solid #eee; margin-bottom: 25px; padding-bottom: 10px; }
+        .uni-logo { width: 120px; }
+        .student-info { display: flex; gap: 30px; align-items: center; }
+        .student-photo { width: 150px; height: 180px; border: 3px solid #003366; border-radius: 5px; object-fit: cover; }
+        .score-display { background: #f1f8ff; padding: 15px; border-radius: 8px; text-align: center; border: 1px solid #cce5ff; margin-top: 20px; }
+        .score-val { font-size: 32px; color: #28a745; font-weight: bold; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @media (max-width: 600px) { .student-info { flex-direction: column; } .label { width: 100%; text-align: center; display: block; } }
+    </style>
+</head>
+<body onload="generateCaptcha()">
+
+    <div class="top-bar">
+        <select id="langSelect" onchange="changeLanguage()">
+            <option value="tr">Türkçe</option>
+            <option value="en">English</option>
+        </select>
+    </div>
+
+    <div class="container">
+        <div class="title" id="mainTitle">INTERNATIONAL SCIENCE AND TECHNOLOGY UNIVERSITY - Belge Sorgulama</div>
+        
+        <table class="form-table" id="queryInputs">
+            <tr>
+                <td class="label" id="labelCode">Belge Doğrulama Kodu:</td>
+                <td><input type="text" id="vCode" placeholder=""></td>
+            </tr>
+            <tr>
+                <td class="label" id="labelNum">Belge Sayısı:</td>
+                <td><input type="text" id="vNum" placeholder=""></td>
+            </tr>
+            <tr>
+                <td class="label" id="labelCaptcha">Güvenlik Kodu:</td>
+                <td>
+                    <div style="display: flex; flex-direction: column; gap: 10px; align-items: flex-start;">
+                        <div class="captcha-img" id="captchaBox" onclick="generateCaptcha()" title="Yenile / Refresh"></div>
+                        <input type="text" id="vCaptcha" style="max-width: 150px;">
+                        <button class="btn-query" id="btnQuery" onclick="verify()">Sorgula</button>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <div id="resultView">
+            <h3 style="text-align: left; color: #003366; font-size: 14px;" id="filesTitle">Bulunan Dosyalar:</h3>
+            <table class="data-table">
+                <thead>
+                    <tr id="tableHead">
+                        <th>DOSYA TİPİ</th>
+                        <th>DOSYA ADI</th>
+                        <th>KAYIT TARİHİ</th>
+                        <th>İŞLEM</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td id="rowDocType">Sınav Sonuç Belgesi</td>
+                        <td>GidenDisYazi.pdf</td>
+                        <td>08.06.2024</td>
+                        <td><a id="btnDownload" href="https://raw.githubusercontent.com/ebyssorgu/istu/main/GidenDisYazi.pdf" class="download-btn" download>Görüntüle / İndir</a></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="official-card">
+                <div class="uni-header">
+                    <img src="https://i.imgur.com/yrwnpr9.png" class="uni-logo" alt="ISTU">
+                    <h2 style="margin: 5px 0; color: #003366;">ISTU UNIVERSITY</h2>
+                    <p style="font-size: 12px; color: #666;" id="officeTitle">Sınav ve Belgelendirme Ofisi</p>
+                </div>
+                
+                <div class="student-info">
+                    <img src="https://i.imgur.com/u060co7.jpeg" class="student-photo" alt="Student Photo">
+                    <table style="flex: 1; font-size: 14px; border-collapse: collapse;">
+                        <tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><b id="resName">Ad Soyad:</b></td><td>IBRAHIM KHAZAAL YOUSIF YOUSIF</td></tr>
+                        <tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><b id="resID">Pasaport No:</b></td><td>99875501262-A17526059</td></tr>
+                        <tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><b id="resNationality">Uyruk:</b></td><td>IRAK / IRAQ</td></tr>
+                        <tr><td style="padding: 10px; border-bottom: 1px solid #eee;"><b id="resBelge">Belge Kodu:</b></td><td>690K-TRAO-D7R5</td></tr>
+                    </table>
+                </div>
+
+                <div class="score-display">
+                    <div style="font-size: 14px; color: #555; margin-bottom: 5px;" id="scoreTitle">SINAV SONUÇ PUANI (Score)</div>
+                    <div class="score-val">81,25 / 100</div>
+                    <div style="font-size: 12px; color: #777;" id="scoreDetail">Doğru: 65 | Yanlış: 15 | Boş: 0</div>
+                </div>
+
+                <p style="text-align: center; color: #28a745; font-size: 13px; font-weight: bold; margin-top: 20px;" id="verifyFooter">
+                    ✅ Belge Doğrulandı. Bu belge güvenli elektronik imza ile imzalanmıştır.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentCaptcha;
+        const langData = {
+            tr: {
+                mainTitle: "INTERNATIONAL SCIENCE AND TECHNOLOGY UNIVERSITY - Belge Sorgulama",
+                labelCode: "Belge Doğrulama Kodu:",
+                labelNum: "Belge Sayısı:",
+                labelCaptcha: "Güvenlik Kodu:",
+                btnQuery: "Sorgula",
+                filesTitle: "Bulunan Dosyalar:",
+                tableHead: "<th>DOSYA TİPİ</th><th>DOSYA ADI</th><th>KAYIT TARİHİ</th><th>İŞLEM</th>",
+                rowDocType: "Sınav Sonuç Belgesi",
+                btnDownload: "Görüntüle / İndir",
+                officeTitle: "Sınav ve Belgelendirme Ofisi",
+                resName: "Ad Soyad:",
+                resID: "Pasaport No:",
+                resNationality: "Uyruk:",
+                resBelge: "Belge Kodu:",
+                scoreTitle: "SINAV SONUÇ PUANI (Score)",
+                scoreDetail: "Doğru: 65 | Yanlış: 15 | Boş: 0",
+                verifyFooter: "✅ Belge Doğrulandı. Bu belge güvenli elektronik imza ile imzalanmıştır.",
+                error: "Bilgiler hatalı! Lütfen tekrar deneyiniz."
+            },
+            en: {
+                mainTitle: "INTERNATIONAL SCIENCE AND TECHNOLOGY UNIVERSITY - Document Inquiry",
+                labelCode: "Verification Code:",
+                labelNum: "Document Number:",
+                labelCaptcha: "Security Code:",
+                btnQuery: "Query",
+                filesTitle: "Found Documents:",
+                tableHead: "<th>FILE TYPE</th><th>FILE NAME</th><th>RECORD DATE</th><th>ACTION</th>",
+                rowDocType: "Exam Result Document",
+                btnDownload: "View / Download",
+                officeTitle: "Examination and Certification Office",
+                resName: "Name Surname:",
+                resID: "Passport No:",
+                resNationality: "Nationality:",
+                resBelge: "Verification Code:",
+                scoreTitle: "EXAM RESULT SCORE",
+                scoreDetail: "Correct: 65 | Incorrect: 15 | Empty: 0",
+                verifyFooter: "✅ Document Verified. This document is signed with a secure electronic signature.",
+                error: "Invalid information! Please try again."
+            }
+        };
+
+        function changeLanguage() {
+            const l = document.getElementById('langSelect').value;
+            const d = langData[l];
+            document.getElementById('mainTitle').innerText = d.mainTitle;
+            document.getElementById('labelCode').innerText = d.labelCode;
+            document.getElementById('labelNum').innerText = d.labelNum;
+            document.getElementById('labelCaptcha').innerText = d.labelCaptcha;
+            document.getElementById('btnQuery').innerText = d.btnQuery;
+            document.getElementById('filesTitle').innerText = d.filesTitle;
+            document.getElementById('tableHead').innerHTML = d.tableHead;
+            document.getElementById('rowDocType').innerText = d.rowDocType;
+            document.getElementById('btnDownload').innerText = d.btnDownload;
+            document.getElementById('officeTitle').innerText = d.officeTitle;
+            document.getElementById('resName').innerText = d.resName;
+            document.getElementById('resID').innerText = d.resID;
+            document.getElementById('resNationality').innerText = d.resNationality;
+            document.getElementById('resBelge').innerText = d.resBelge;
+            document.getElementById('scoreTitle').innerText = d.scoreTitle;
+            document.getElementById('scoreDetail').innerText = d.scoreDetail;
+            document.getElementById('verifyFooter').innerText = d.verifyFooter;
+        }
+
+        function generateCaptcha() {
+            currentCaptcha = Math.floor(10000 + Math.random() * 90000).toString();
+            document.getElementById('captchaBox').innerText = currentCaptcha;
+        }
+
+        function verify() {
+            const code = document.getElementById('vCode').value.trim();
+            const num = document.getElementById('vNum').value.trim();
+            const captcha = document.getElementById('vCaptcha').value.trim();
+            const l = document.getElementById('langSelect').value;
+
+            if(code === "690K-TRAO-D7R5" && num === "1553" && captcha === currentCaptcha) {
+                document.getElementById('queryInputs').style.display = 'none';
+                document.getElementById('resultView').style.display = 'block';
+            } else {
+                alert(langData[l].error);
+                generateCaptcha();
+            }
+        }
+    </script>
+</body>
+</html>
